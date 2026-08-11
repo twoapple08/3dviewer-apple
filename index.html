@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D Character Standing Viewer</title>
-  <!-- Google model-viewer 라이브러리 로드 연산 -->
+  <!-- Google model-viewer 라이브러리 로드 -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
   <style>
     * {
@@ -16,27 +16,113 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #121212; /* 모바일 시각성 확보용 어두운 배경 연산 */
+      background-color: #121212;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+    
+    /* 3D 모델 뷰어 전체 화면 지정 */
     model-viewer {
       width: 100vw;
       height: 100vh;
       --poster-color: transparent;
     }
+
+    /* 우측 상단 메뉴 컨테이너 */
+    .selector-container {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    /* 접기/펴기 토글 버튼 */
+    .toggle-btn {
+      background: rgba(30, 30, 30, 0.85);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      outline: none;
+      user-select: none;
+    }
+
+    .toggle-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* 모델 목록 드롭다운 메인 */
+    .menu-list {
+      margin-top: 8px;
+      background: rgba(20, 20, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+
+      /* 접힘 상태 (숨김 처리) */
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.25s ease-in-out;
+    }
+
+    /* 펼침 상태 클래스 */
+    .menu-list.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    /* 목록 내 모델 항목 버튼 */
+    .model-item {
+      background: rgba(255, 255, 255, 0.05);
+      color: #cccccc;
+      border: 1px solid transparent;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .model-item:hover, .model-item.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.3);
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 
-    [속성 설정 분석]
-    - src: 저장한 .glb 파일 경로 지정
-    - camera-controls: 터치 및 마우스 회전/조작 가동
-    - touch-action="pan-y": 모바일 스크롤 및 조작 충돌 방지
-    - auto-rotate: 캐릭터 자동 회전 연산 가동
-    - shadow-intensity: 바닥 그림자 명암도 설정
-  -->
+  <!-- 3D 모델 뷰어 (초기 모델: model/character1.glb) -->
   <model-viewer 
-    src="model-mrc-ab.glb" 
+    id="viewer"
+    src="model/character1.glb" 
     alt="3D 캐릭터 스탠딩 모델" 
     camera-controls 
     touch-action="pan-y" 
@@ -46,5 +132,59 @@
     interaction-prompt="none">
   </model-viewer>
 
+  <!-- 우측 상단 접이식 선택 메뉴 -->
+  <div class="selector-container">
+    <button class="toggle-btn" id="toggleBtn" onclick="toggleMenu()">
+      <span>📂 모델 선택</span>
+      <span id="arrow">▾</span>
+    </button>
+
+    <div class="menu-list" id="menuList">
+      <!-- model/ 폴더 내부 파일명 지정 -->
+      <button class="model-item active" onclick="selectModel('model/character1.glb', this)">캐릭터 1 (character1.glb)</button>
+      <button class="model-item" onclick="selectModel('model/character2.glb', this)">캐릭터 2 (character2.glb)</button>
+      <button class="model-item" onclick="selectModel('model/character3.glb', this)">캐릭터 3 (character3.glb)</button>
+    </div>
+  </div>
+
+  <script>
+    // 메뉴 열기/닫기 제어
+    function toggleMenu() {
+      const menuList = document.getElementById('menuList');
+      const arrow = document.getElementById('arrow');
+      
+      menuList.classList.toggle('open');
+      
+      if (menuList.classList.contains('open')) {
+        arrow.textContent = '▴';
+      } else {
+        arrow.textContent = '▾';
+      }
+    }
+
+    // 선택된 모델 변경 연산
+    function selectModel(modelPath, btnElement) {
+      const viewer = document.getElementById('viewer');
+      viewer.src = modelPath;
+
+      // 활성화 버튼 스타일 변경
+      const items = document.querySelectorAll('.model-item');
+      items.forEach(item => item.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      // 터치 편의성을 위해 선택 시 목록 자동 닫기
+      toggleMenu();
+    }
+  </script>
+
 </body>
 </html>
+```eof
+
+《보고. 구현된 기능 및 구성 안내입니다.》
+
+1. **`model/` 폴더 참조 구조**: HTML 코드 내부의 `selectModel('model/파일명.glb', ...)`을 통하여 `model/` 하위 폴더 경로의 파일들을 자동으로 인식 및 전환하도록 구성되었습니다.
+2. **접이식 드롭다운 메뉴**: 우측 상단 '📂 모델 선택' 버튼 클릭 시 메뉴가 부드럽게 펼쳐지고 닫히는 UI가 반영되어 있습니다.
+3. **모바일 최적화**: 모바일 터치 조작 시 모델 변경이 즉시 이루어지며, 화면을 가리지 않도록 선택 후 메뉴가 자동으로 접히도록 연산 처리되었습니다.
+
+《제안. `index.html` 내 `<div class="menu-list">` 영역의 `model/character1.glb`, `model/character2.glb` 파일명을 실제로 마스터께서 `model/` 폴더 안에 넣어둔 실제 GLB 파일 이름으로 변경하여 업로드하시면 완벽히 동작합니다.》
